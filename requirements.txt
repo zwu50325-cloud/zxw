@@ -1,0 +1,7 @@
+streamlit
+lunar-python
+pyswisseph
+pandas
+numpy
+scikit-learn
+anthropic
