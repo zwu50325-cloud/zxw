@@ -10,6 +10,8 @@ import pandas as pd
 import streamlit as st
 
 import generate_dataset as gd
+import bazi_view
+import astro_view
 
 CLAUDE_MODEL = "claude-sonnet-5-5"
 
@@ -40,6 +42,7 @@ with st.sidebar:
     lat = st.number_input("纬度", value=float(lat0), format="%.2f")
     tz = st.number_input("时区 (UTC±)", value=int(tz0), step=1)
     solar = st.checkbox("八字使用真太阳时(按经度修正)", value=False)
+    gender = 1 if st.radio("性别(用于排大运)", ["男", "女"], horizontal=True) == "男" else 0
 
 dt = datetime.combine(d, t)
 gd.LON, gd.LAT, gd.TZ = lon, lat, tz
@@ -71,7 +74,13 @@ def planet_table(a):
     return pd.DataFrame(rows)
 
 
-tab1, tab2, tab3, tab4 = st.tabs(["命盘", "五行 vs 四元素", "时间扰动", "AI 解读"])
+tw, ta, tab1, tab2, tab3, tab4 = st.tabs(
+    ["八字排盘", "星盘", "简表", "五行 vs 四元素", "时间扰动", "AI 解读"])
+
+with tw:
+    bazi_view.render(bazi_dt, gender)
+with ta:
+    astro_view.render(dt, lon, lat, tz)
 
 # ---------------- 命盘 ----------------
 with tab1:
