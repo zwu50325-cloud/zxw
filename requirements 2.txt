@@ -1,0 +1,6 @@
+streamlit>=1.36
+lunar-python
+pyswisseph
+pandas
+numpy
+anthropic
