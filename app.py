@@ -24,6 +24,7 @@ pages = [
     st.Page("page_astro.py", title="星盘", icon="🪐"),
     st.Page("page_summary.py", title="对比简表", icon="📋"),
     st.Page("page_perturb.py", title="时间扰动", icon="⏱️"),
+    st.Page("page_samechars.py", title="同字异位", icon="🔀"),
     st.Page("page_research.py", title="规律研究", icon="🔬"),
     st.Page("page_ai.py", title="AI 解读", icon="🤖"),
 ]
