@@ -87,6 +87,8 @@ def aspects_of(pts):
     for i in range(len(names)):
         for j in range(i + 1, len(names)):
             a, b = names[i], names[j]
+            if (a, b) == ("上升", "天顶"):  # 两条轴线之间的夹角不算相位
+                continue
             d = abs(pts[a]["lon"] - pts[b]["lon"]) % 360
             d = min(d, 360 - d)
             for nm, sym, ang, orb, col in ASPECTS:
