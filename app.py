@@ -27,6 +27,8 @@ pages = [
     st.Page("page_samechars.py", title="同字异位", icon="🔀"),
     st.Page("page_conditions.py", title="星盘条件→八字", icon="🧭"),
     st.Page("page_timeline.py", title="同年月日时变化", icon="📈"),
+    st.Page("page_hours.py", title="同日十二时辰", icon="🕐"),
+    st.Page("page_discovery.py", title="规律发现", icon="🔎"),
     st.Page("page_research.py", title="规律研究", icon="🔬"),
     st.Page("page_ai.py", title="AI 解读", icon="🤖"),
 ]

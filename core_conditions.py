@@ -23,6 +23,11 @@ BODIES = ca.MAIN  # 太阳 月亮 水星 金星 火星 木星 土星 天王星 �
 BAZI_COLS = ["日主", "日主五行", "月令", "年支", "日支", "时支", "日主状态", "最多五行", "最多十神"] + \
             ["十神_" + k for k in POS7]
 ASTRO_COLS = [f"{b}宫" for b in BODIES] + [f"{b}座" for b in BODIES] + ["上升座", "天顶座", "日夜盘"]
+# 规律发现用的额外列: 天体两两之间的相位(合/六合/刑/拱/冲/无)、月相; 八字的年干、月干、时干、年柱、日柱
+ASPECT_COLS = [f"相位_{a}_{b}" for i, a in enumerate(BODIES) for b in BODIES[i + 1:]]
+ASTRO_EXTRA = ["月相"] + ASPECT_COLS
+BAZI_EXTRA = ["年干", "月干", "时干", "年柱", "日柱"]
+PHASES = ["新月", "盈眉月", "上弦月", "盈凸月", "满月", "亏凸月", "下弦月", "残月"]
 
 
 # ---------------- 生成数据 ----------------
@@ -51,6 +56,7 @@ def row_for(t, lon, lat, tz, hsys="Placidus"):
            "最多五行": _top(wx, "金木水火土"), "最多十神": _top(tgc, TEN_GODS)}
     for k in POS7:
         row["十神_" + k] = tg[k]
+    row.update({"年干": y[0], "月干": m[0], "时干": h[0], "年柱": y, "日柱": d})
     pts, cusps, asc, mc, day = ca.compute(t, lon, lat, tz, hsys)
     for b in BODIES:
         if b in pts:
@@ -59,6 +65,20 @@ def row_for(t, lon, lat, tz, hsys="Placidus"):
     row["上升座"] = ca.SIGNS[int(asc // 30)]
     row["天顶座"] = ca.SIGNS[int(mc // 30)]
     row["日夜盘"] = "日盘" if day else "夜盘"
+    lon_ = {b: pts[b]["lon"] for b in BODIES if b in pts}
+    for i, a in enumerate(BODIES):
+        for b in BODIES[i + 1:]:
+            val = "无"
+            if a in lon_ and b in lon_:
+                gap = abs(lon_[a] - lon_[b]) % 360
+                gap = min(gap, 360 - gap)
+                for nm, _sym, ang, orb, _col in ca.ASPECTS:
+                    if abs(gap - ang) <= orb:
+                        val = nm
+                        break
+            row[f"相位_{a}_{b}"] = val
+    ph = (pts["月亮"]["lon"] - pts["太阳"]["lon"]) % 360
+    row["月相"] = PHASES[int((ph + 22.5) // 45) % 8]
     return row
 
 
