@@ -17,6 +17,7 @@ from lunar_python import Solar
 
 import core_astro as ca
 from core_bazi import WX, shishen
+from core_hours import REL_COLS, rel_features
 from core_samechars import BENQI, HOUR, POS7, TEN_GODS, wangxiang
 
 BODIES = ca.MAIN  # 太阳 月亮 水星 金星 火星 木星 土星 天王星 海王星 冥王星
@@ -27,6 +28,8 @@ ASTRO_COLS = [f"{b}宫" for b in BODIES] + [f"{b}座" for b in BODIES] + ["上�
 ASPECT_COLS = [f"相位_{a}_{b}" for i, a in enumerate(BODIES) for b in BODIES[i + 1:]]
 ASTRO_EXTRA = ["月相"] + ASPECT_COLS
 BAZI_EXTRA = ["年干", "月干", "时干", "年柱", "日柱"]
+BAZI_REL = list(REL_COLS)  # 四柱之间的天干合冲、地支六合六冲刑害破、三合三会局(见 core_hours.rel_features)
+ASTRO_COUNT = ["相位数_合", "相位数_六合", "相位数_刑", "相位数_拱", "相位数_冲", "相位数_总", "相位数_硬(刑冲)", "相位数_软(拱六合)"]
 PHASES = ["新月", "盈眉月", "上弦月", "盈凸月", "满月", "亏凸月", "下弦月", "残月"]
 
 
@@ -57,6 +60,7 @@ def row_for(t, lon, lat, tz, hsys="Placidus"):
     for k in POS7:
         row["十神_" + k] = tg[k]
     row.update({"年干": y[0], "月干": m[0], "时干": h[0], "年柱": y, "日柱": d})
+    row.update(rel_features([y, m, d, h]))
     pts, cusps, asc, mc, day = ca.compute(t, lon, lat, tz, hsys)
     for b in BODIES:
         if b in pts:
@@ -66,6 +70,7 @@ def row_for(t, lon, lat, tz, hsys="Placidus"):
     row["天顶座"] = ca.SIGNS[int(mc // 30)]
     row["日夜盘"] = "日盘" if day else "夜盘"
     lon_ = {b: pts[b]["lon"] for b in BODIES if b in pts}
+    n_asp = {"合": 0, "六合": 0, "刑": 0, "拱": 0, "冲": 0}
     for i, a in enumerate(BODIES):
         for b in BODIES[i + 1:]:
             val = "无"
@@ -77,6 +82,12 @@ def row_for(t, lon, lat, tz, hsys="Placidus"):
                         val = nm
                         break
             row[f"相位_{a}_{b}"] = val
+            if val in n_asp:
+                n_asp[val] += 1
+    row.update({f"相位数_{k}": v for k, v in n_asp.items()})
+    row["相位数_总"] = sum(n_asp.values())
+    row["相位数_硬(刑冲)"] = n_asp["刑"] + n_asp["冲"]
+    row["相位数_软(拱六合)"] = n_asp["拱"] + n_asp["六合"]
     ph = (pts["月亮"]["lon"] - pts["太阳"]["lon"]) % 360
     row["月相"] = PHASES[int((ph + 22.5) // 45) % 8]
     return row

@@ -49,6 +49,38 @@ def ju_with(zs, zhi_idx=3):
            [f"{t}三会" for t in cb.SANHUI_T if z in t and all(x in zs for x in t)]
 
 
+REL_PAIRS = ["年月", "年日", "年时", "月日", "月时", "日时"]
+_IDX = {"年": 0, "月": 1, "日": 2, "时": 3}
+REL_COLS = (["干_" + p for p in REL_PAIRS] + ["支_" + p for p in REL_PAIRS] +
+            ["干合数", "干冲数", "支六合数", "支六冲数", "支刑数", "支害数", "支破数", "局"])
+
+
+def rel_features(gz):
+    """四柱之间的天干合冲、地支六合/六冲/刑/害/破、三合三会局。gz = ['庚辰','戊寅','壬子','丙午']。
+    返回 {列名: 值}: 每一对柱(年月、年日…)的干关系和支关系, 以及各类关系的个数。"""
+    out, cnt = {}, Counter()
+    zs = [p[1] for p in gz]
+    for p in REL_PAIRS:
+        i, j = _IDX[p[0]], _IDX[p[1]]
+        g, z = gan_rel(gz[i][0], gz[j][0]), zhi_rel(gz[i][1], gz[j][1])
+        out["干_" + p], out["支_" + p] = g or "无", z or "无"
+        cnt["干合"] += g == "合"
+        cnt["干冲"] += g == "冲"
+        for part in z.replace("同·自刑", "同").split("、"):
+            cnt[part] += 1
+    out.update({"干合数": cnt["干合"], "干冲数": cnt["干冲"], "支六合数": cnt["六合"], "支六冲数": cnt["六冲"],
+                "支刑数": cnt["相刑"], "支害数": cnt["相害"], "支破数": cnt["相破"]})
+    ju = [t + "三合" for t in cb.SANHE_T if all(x in zs for x in t)] + \
+         [t + "三会" for t in cb.SANHUI_T if all(x in zs for x in t)]
+    out["局"] = "、".join(ju) or "无"
+    return out
+
+
+def rel_text(rel):
+    """把 rel_features 的结果写成一句话, 例如 '日时干冲；日时支六冲'。"""
+    return "；".join(f"{k[2:]}{k[0]}{v}" for k, v in rel.items() if k[:2] in ("干_", "支_") and v != "无") or "无"
+
+
 # ---------------- 一天的十三个时段 ----------------
 def day_rows(d, lon, lat, tz, hsys="Placidus", gender=1):
     """d: date。返回 (前三柱, 行列表)。前三柱取当天正午。"""

@@ -19,8 +19,8 @@ import pandas as pd
 
 import core_conditions as cc
 
-ASTRO = cc.ASTRO_COLS + cc.ASTRO_EXTRA
-BAZI = cc.BAZI_COLS + cc.BAZI_EXTRA
+ASTRO = cc.ASTRO_COLS + cc.ASTRO_EXTRA + cc.ASTRO_COUNT
+BAZI = cc.BAZI_COLS + cc.BAZI_EXTRA + cc.BAZI_REL
 # 控制变量: 名称 -> 用来分层的列
 CONTROLS = {"年柱": ["年柱"], "月支": ["月令"], "时支": ["时支"], "月支+时支": ["月令", "时支"]}
 # 八字特征本身就由控制变量决定时, 不做这个控制(否则 V 必然变 0, 没有意义)

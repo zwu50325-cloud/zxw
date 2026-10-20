@@ -5,6 +5,7 @@ from datetime import date, datetime, time, timedelta
 import pandas as pd
 import streamlit as st
 
+import core_hours as chh
 import core_samechars as sc
 import core_timeline as ct
 from ui_common import get_birth
@@ -165,7 +166,8 @@ with tabs[2]:
             _, changed = sc.diff_flags(prev, d)
             kind = "日柱变" if p[2] != prev["pillars"][2] else "只有时柱变"
         seq.append({"时刻": t0, "八字": d["bazi"], "变化": kind, "十神逐位变化数": changed, "日主": d["day_master"],
-                    "日主状态": d["state"], "十神构成": d["tg_comp"]})
+                    "日主状态": d["state"], "十神构成": d["tg_comp"],
+                    "四柱之间的合冲刑害": chh.rel_text(chh.rel_features(p))})
         prev = d
     sq = pd.DataFrame(seq)
     summ = sq[sq["变化"] != "起点"].groupby("变化")["十神逐位变化数"].agg(["count", "mean", "min", "max"]).round(1)
@@ -200,6 +202,19 @@ with tabs[3]:
         share = short.apply(lambda r: r["天体A"] in fast or r["天体B"] in fast, axis=1).mean() if len(short) else 0
         st.markdown(f"**相位的稳定程度**：整个窗口都成立的相位 **{len(whole)}** 段；持续不到 1 天、窗口内完整进出的 **{len(short)}** 段，"
                     f"其中涉及月亮或上升/天顶的占 **{share:.0%}**。这说明“日、时不同导致的星盘差异”，主要来自月亮和上升/天顶这几个走得最快的点。")
+
+    st.subheader("八字变化的时刻，和星盘相位的起止对得上吗")
+    st.write("八字里，每次日柱或时柱一换，四柱之间的合冲刑害关系（天干合冲、地支六合六冲刑害破）就跟着变。"
+             "把这些时刻，和星盘里相位“进入或离开”的时刻比一比：离最近的一次相位起止有多少分钟？再和“把八字变化整体随机平移一段时间”比。")
+    if len(R["align"]):
+        st.dataframe(R["align"], hide_index=True, use_container_width=True)
+        st.caption("比值 = 观测中位距离 ÷ 平移后中位距离。比值明显小于 1、同时 p 很小（例如小于 0.05），才说明八字变化和星盘相位起止有对齐；"
+                   "比值接近 1、p 不小，说明对不上，只是碰巧：相位起止很密时，随便取一个时刻，离最近的相位起止也不远。")
+    else:
+        st.info("这个窗口里的事件太少，无法比较。可以把“要看相位的天体”多选几个。")
+    st.caption("为什么多半对不上：八字的关系变化是两个整数周期叠出来的——日干 10 天一轮，日支 12 天一轮，时支 12 个时辰一轮，"
+               "日支和月支（年支）的合冲刑害每 12 天重复一遍；而星盘相位的周期是各个天体的轨道周期，月亮和太阳 29.5 天，"
+               "月亮和别的行星各不相同。12 天、10 天和这些周期互不是整数倍，所以两边的变化点不会同步。")
 
     st.subheader("时辰和上升星座的对应")
     st.write("下表：每个时辰里，上升落在各星座的占比（%）。同一天里时辰和上升星座大致对应，但不是一一对应。")

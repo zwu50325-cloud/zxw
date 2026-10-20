@@ -13,6 +13,7 @@ import numpy as np
 import pandas as pd
 
 import core_astro as ca
+from core_hours import rel_features
 from core_samechars import pillars_at
 
 BODIES = ca.MAIN                       # 十个天体
@@ -242,6 +243,47 @@ def daily_summary(S):
     return pd.DataFrame(rows)
 
 
+def bazi_change_times(bz):
+    """八字(日柱或时柱)发生变化的时刻, 以及其中"四柱之间的合冲刑害关系"也跟着变了的时刻。"""
+    cut = sorted(set(bz["日柱"]["开始"].iloc[1:]) | set(bz["时柱"]["开始"].iloc[1:]))
+    rel_t = [x for x in cut if rel_features(pillars_at(x)) != rel_features(pillars_at(x - MIN))]
+    return cut, rel_t
+
+
+def _nearest(ev, t):
+    i = np.searchsorted(ev, t)
+    lo, hi = ev[np.clip(i - 1, 0, len(ev) - 1)], ev[np.clip(i, 0, len(ev) - 1)]
+    return np.minimum(np.abs(t - lo), np.abs(hi - t))
+
+
+def alignment(R, cut, rel_t, n_rand=300, seed=0):
+    """八字变化的时刻, 离最近一次星盘相位"进入或离开"有多少分钟? 和"把八字变化整体平移随机一段时间"相比, 是更近还是一样?
+    比值 < 1 且 p 很小, 才说明两者有对齐; 比值约等于 1, p 不小, 说明对不上(只是碰巧)。"""
+    S, A = R["S"], R["aspects"]
+    a0, L = S["start"].timestamp() / 60, (S["end"] - S["start"]).total_seconds() / 60
+    fast = {"月亮", "上升", "天顶"}
+    classes = {"全部相位": A,
+               "涉及月亮的相位": A[(A["天体A"] == "月亮") | (A["天体B"] == "月亮")],
+               "不含月亮和上升/天顶的相位": A[~A["天体A"].isin(fast) & ~A["天体B"].isin(fast)]}
+    rng = np.random.default_rng(seed)
+    rows = []
+    for cname, df in classes.items():
+        ev = [x.timestamp() / 60 for x in df.loc[~df["开始被截断"], "开始"]] + \
+             [x.timestamp() / 60 for x in df.loc[~df["结束被截断"], "结束"]]
+        ev = np.sort(np.array(ev))
+        for tname, times in (("日柱或时柱变化", cut), ("其中四柱关系也变化", rel_t)):
+            if len(ev) < 3 or len(times) < 3:
+                continue
+            tt = np.array([x.timestamp() / 60 for x in times])
+            obs = float(np.median(_nearest(ev, tt)))
+            sims = np.array([np.median(_nearest(ev, a0 + (tt - a0 + off) % L)) for off in rng.uniform(0, L, n_rand)])
+            rows.append({"八字变化": tname, "星盘事件": cname, "八字变化次数": len(tt), "星盘事件次数": len(ev),
+                         "观测中位距离(分钟)": round(obs, 1), "平移后中位距离(分钟)": round(float(np.median(sims)), 1),
+                         "比值": round(obs / max(float(np.median(sims)), 1e-9), 2),
+                         "p(平移后更近的概率)": round(float(np.mean(sims <= obs)), 3)})
+    return pd.DataFrame(rows)
+
+
 def analyze(start, end, step_min, lon, lat, tz, hsys, names, axes=False):
     """一次性算完。names: 要看相位的天体; axes: 是否把上升/天顶也算进去(变化很快, 条目很多)。
     上升始终会被采样, 用来做时辰对照。"""
@@ -256,5 +298,7 @@ def analyze(start, end, step_min, lon, lat, tz, hsys, names, axes=False):
          "seg_sign": seg_sign, "seg_house": seg_house,
          "motion": motion_table(S, sample_names), "hour_asc": hour_vs_asc(S),
          "hour_align": hour_boundary_vs_asc(S, bz["时柱"], seg_sign["上升"]), "daily": daily_summary(S)}
+    R["cut"], R["rel_cut"] = bazi_change_times(bz)
+    R["align"] = alignment(R, R["cut"], R["rel_cut"])
     S["chart"] = None  # 不把缓存的星盘对象带出去, 结果更小
     return R
