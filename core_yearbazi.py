@@ -30,8 +30,10 @@ def year_segments(start, end, step_min=60):
         rows, i0 = [], 0
         for i in range(1, len(ts) + 1):
             if i == len(ts) or pil[i][k] != pil[i0][k]:
-                s = ts[0] if i0 == 0 else ct.bisect_state(f, ts[i0 - 1], ts[i0])
-                e = end if i == len(ts) else ct.bisect_state(f, ts[i - 1], ts[i])
+                # 日柱、时柱只在整点换, 采样点又落在整点上, 所以换柱时刻就是采样点本身, 不必再二分(省掉绝大部分排盘次数)
+                fast = k >= 2 and step_min == 60 and start.minute == 0
+                s = ts[0] if i0 == 0 else (ts[i0] if fast else ct.bisect_state(f, ts[i0 - 1], ts[i0]))
+                e = end if i == len(ts) else (ts[i] if fast else ct.bisect_state(f, ts[i - 1], ts[i]))
                 rows.append({"开始": s, "结束": e, "干支": pil[i0][k]})
                 i0 = i
         out[name] = pd.DataFrame(rows)
