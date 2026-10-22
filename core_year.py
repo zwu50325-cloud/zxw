@@ -50,26 +50,31 @@ def sample_year(start, end, step_h, ch, names):
             "start": start, "end": end, "step": step_h * 60, "names": list(names)}
 
 
+DEV_MAX = 22   # 两次精确之间偏离目标角度超过这个度数, 就不是同一次逆行来回, 而是新的一轮
+
+
 def episodes(asp, S):
-    """把同一对天体、同一种相位的多段合成"一轮": 只有因逆行而来回进出的才合并。
-    判据: 两次精确之间, 两天体的相对角净变化小于 180°(逆行来回), 若走满一圈就是新的一轮。"""
+    """把同一对天体、同一种相位的多段合成"一轮": 只合并因逆行而在目标角度附近来回进出的。
+    判据: 两次精确之间, 两天体的夹角偏离目标角度始终不超过 DEV_MAX 度。"""
     cols = ["天体A", "相位", "天体B", "开始", "结束", "精确次数", "最小偏差(度)", "最接近精确"]
     if not len(asp):
         return pd.DataFrame(columns=cols)
-    unwrapped, step_s = {}, S["step"] * 60.0
+    step_s, n = S["step"] * 60.0, len(S["t"])
+    idx = lambda t: min(max(int(round((t - S["t"][0]).total_seconds() / step_s)), 0), n - 1)
 
-    def rel_at(a, b, t):
-        if (a, b) not in unwrapped:
-            d = (np.diff(S["lon"][a] - S["lon"][b]) + 180) % 360 - 180
-            unwrapped[(a, b)] = np.concatenate([[0.0], np.cumsum(d)])
-        i = int(round((t - S["t"][0]).total_seconds() / step_s))
-        return unwrapped[(a, b)][min(max(i, 0), len(S["t"]) - 1)]
+    def max_dev(a, b, ang, t1, t2):
+        i, j = sorted((idx(t1), idx(t2)))
+        d = np.abs(S["lon"][a][i:j + 1] - S["lon"][b][i:j + 1]) % 360
+        d = np.minimum(d, 360 - d)
+        return float(np.abs(d - ang).max())
 
     rows = []
     for (a, p, b), g in asp.sort_values("最接近精确").groupby(["天体A", "相位", "天体B"]):
+        ang = ANG_NAME[p.split(" ", 1)[1]]
+        no_merge = "太阳" in (a, b) and bool({a, b} & {"水星", "金星"})
         cur = None
         for _, r in g.iterrows():
-            if cur is not None and abs(rel_at(a, b, r["最接近精确"]) - rel_at(a, b, cur["_last"])) < 180:
+            if cur is not None and not no_merge and max_dev(a, b, ang, cur["_last"], r["最接近精确"]) <= DEV_MAX:
                 cur["开始"], cur["结束"] = min(cur["开始"], r["开始"]), max(cur["结束"], r["结束"])
                 cur["精确次数"] += 1
                 cur["_last"] = r["最接近精确"]
