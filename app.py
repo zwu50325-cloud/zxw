@@ -29,6 +29,7 @@ pages = [
     st.Page("page_timeline.py", title="同年月日时变化", icon="📈"),
     st.Page("page_hours.py", title="同日十二时辰", icon="🕐"),
     st.Page("page_year.py", title="一年星象", icon="🌌"),
+    st.Page("page_yearbazi.py", title="一年八字×相位", icon="🗓️"),
     st.Page("page_discovery.py", title="规律发现", icon="🔎"),
     st.Page("page_pipeline.py", title="规律流水线", icon="🧪"),
     st.Page("page_research.py", title="规律研究", icon="🔬"),

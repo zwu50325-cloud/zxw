@@ -167,3 +167,15 @@ def analyze(start, days, step_h, natal_dt, lon, lat, tz, hsys, names):
     R["obs"] = observations(R)
     S["chart"] = None
     return R
+
+
+def analyze_with_bazi(start, days, step_h, natal_dt, lon, lat, tz, hsys, names):
+    """analyze + 全年八字区段 + 每一轮相位对应的八字 + 起止与换柱的对照 + 关联检验。"""
+    import core_yearbazi as yb
+    R = analyze(start, days, step_h, natal_dt, lon, lat, tz, hsys, names)
+    end = start + timedelta(days=days)
+    R["bazi"] = yb.year_segments(start, end)
+    R["ep_bazi"] = yb.attach_bazi(R["episodes"], R["bazi"])
+    R["edge"] = yb.edge_alignment(R["episodes"], R["bazi"], start, end)
+    R["assoc"] = yb.association(R["ep_bazi"])
+    return R
